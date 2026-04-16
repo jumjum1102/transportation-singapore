@@ -1,602 +1,755 @@
-import { useState, useEffect, useRef } from "react";
-
-/* ── Unsplash CC0 images ── */
-const IMGS = {
-  hero:    "https://images.unsplash.com/photo-1525625293386-3f8f99389edd?w=1400&q=80",
-  mrt:     "https://images.unsplash.com/photo-1565043666747-69f6646db940?w=900&q=80",
-  changi:  "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=900&q=80",
-  jewel:   "https://images.unsplash.com/photo-1580221185934-68b8a21e5a7a?w=900&q=80",
-  bus:     "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=900&q=80",
-  car:     "https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=900&q=80",
-  future:  "https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=900&q=80",
-  city:    "https://images.unsplash.com/photo-1508780709619-79562169bc64?w=900&q=80",
-};
-
-/* ── Responsive hook ── */
-function useW() {
-  const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 900);
-  useEffect(() => {
-    const h = () => setW(window.innerWidth);
-    window.addEventListener("resize", h);
-    return () => window.removeEventListener("resize", h);
-  }, []);
-  return w;
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>シンガポール交通・空港ガイド | Singapore Transport & Airport Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Base ── */
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  font-family:'DM Sans',sans-serif;
+  background:#fff;
+  color:#1a1a2e;
+  overflow-x:hidden;
+  line-height:1.6;
 }
+img{display:block;max-width:100%;}
+button{cursor:pointer;font-family:'DM Sans',sans-serif;}
 
-/* ── Intersection observer hook ── */
-function useFade(threshold = 0.15) {
-  const ref = useRef(null);
-  const [vis, setVis] = useState(false);
-  useEffect(() => {
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setVis(true); }, { threshold });
-    if (ref.current) obs.observe(ref.current);
-    return () => obs.disconnect();
-  }, []);
-  return [ref, vis];
+/* ── Fade-in animation ── */
+.fade{
+  opacity:0;
+  transform:translateY(28px);
+  transition:opacity .7s ease, transform .7s ease;
 }
+.fade.visible{opacity:1;transform:translateY(0);}
+.fade.d1{transition-delay:.1s;}
+.fade.d2{transition-delay:.2s;}
+.fade.d3{transition-delay:.3s;}
 
-function FadeIn({ children, delay = 0, style = {} }) {
-  const [ref, vis] = useFade();
-  return (
-    <div ref={ref} style={{
-      opacity: vis ? 1 : 0,
-      transform: vis ? "translateY(0)" : "translateY(28px)",
-      transition: `opacity .7s ease ${delay}s, transform .7s ease ${delay}s`,
-      ...style
-    }}>
-      {children}
-    </div>
-  );
+/* ── Typography ── */
+.playfair{font-family:'Playfair Display',Georgia,serif;}
+.dm{font-family:'DM Sans',sans-serif;}
+.chapter-label{font-size:11px;letter-spacing:4px;color:#999;text-transform:uppercase;margin-bottom:12px;}
+.chapter-title{font-family:'Playfair Display',Georgia,serif;font-size:clamp(24px,4vw,42px);font-weight:700;line-height:1.2;color:#1a1a2e;margin-bottom:8px;}
+.chapter-sub{font-style:italic;font-size:14px;color:#aaa;margin-bottom:20px;}
+.chapter-line{width:48px;height:3px;background:#1a1a2e;margin-bottom:0;}
+.body-text{font-size:15px;line-height:1.9;color:#444;}
+.small-text{font-size:13px;line-height:1.8;color:#666;}
+
+/* ── Layout ── */
+.max-w{max-width:840px;margin:0 auto;}
+.section-pad{padding:100px 48px;border-bottom:1px solid #f0f0f0;}
+.section-alt{padding:100px 48px;border-bottom:1px solid #f0f0f0;background:#f9f8f6;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:40px;}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;}
+.grid-future{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:40px;}
+.grid-car-cost{display:flex;flex-direction:column;gap:6px;}
+.flex-col{display:flex;flex-direction:column;}
+
+/* ── Header ── */
+#site-header{
+  position:sticky;top:0;
+  background:rgba(255,255,255,0.97);
+  border-bottom:1px solid #eee;
+  z-index:100;
+  padding:14px 48px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  backdrop-filter:blur(10px);
 }
-
-/* ── Stat card ── */
-function Stat({ num, unit, label, accent = "#1A1A2E", delay = 0 }) {
-  return (
-    <FadeIn delay={delay}>
-      <div style={{ borderTop: `3px solid ${accent}`, paddingTop: 16 }}>
-        <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: "clamp(32px,5vw,52px)", fontWeight: 700, color: accent, lineHeight: 1, display: "flex", alignItems: "baseline", gap: 4 }}>
-          {num}<span style={{ fontSize: "0.45em", fontFamily: "sans-serif", fontWeight: 400, color: "#666" }}>{unit}</span>
-        </div>
-        <div style={{ fontSize: 12, color: "#888", marginTop: 8, lineHeight: 1.6, fontFamily: "'DM Sans', sans-serif" }}>{label}</div>
-      </div>
-    </FadeIn>
-  );
+.header-logo{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:#1a1a2e;}
+#desktop-nav{display:flex;gap:24px;}
+.nav-btn{
+  border:none;background:none;
+  font-size:12px;letter-spacing:1px;
+  color:#aaa;font-weight:400;
+  padding:4px 0;
+  border-bottom:2px solid transparent;
+  transition:color .2s, border-color .2s, font-weight .2s;
 }
-
-/* ── Chapter title ── */
-function ChapterTitle({ num, ja, en, sp }) {
-  return (
-    <FadeIn>
-      <div style={{ marginBottom: sp ? 32 : 52 }}>
-        <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, letterSpacing: 4, color: "#999", textTransform: "uppercase", marginBottom: 12 }}>Chapter {num}</div>
-        <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: sp ? "clamp(22px,6vw,30px)" : "clamp(26px,4vw,44px)", fontWeight: 700, lineHeight: 1.2, color: "#1A1A2E", margin: 0 }}>{ja}</h2>
-        <p style={{ fontFamily: "'DM Sans', sans-serif", fontStyle: "italic", fontSize: 14, color: "#aaa", marginTop: 8 }}>{en}</p>
-        <div style={{ width: 48, height: 3, background: "#1A1A2E", marginTop: 20 }} />
-      </div>
-    </FadeIn>
-  );
+.nav-btn.active{color:#1a1a2e;font-weight:700;border-bottom-color:#1a1a2e;}
+#hamburger{display:none;border:none;background:none;font-size:22px;color:#1a1a2e;}
+#mobile-menu{
+  display:none;position:fixed;top:50px;left:0;right:0;
+  background:white;border-bottom:1px solid #eee;
+  z-index:99;padding:12px 20px;
 }
-
-/* ── Body text ── */
-const body = { fontFamily: "'DM Sans', sans-serif", fontSize: 15, lineHeight: 1.9, color: "#444" };
-const small = { fontFamily: "'DM Sans', sans-serif", fontSize: 13, lineHeight: 1.8, color: "#666" };
-const accent = "#1A1A2E";
-
-/* ── Timeline item ── */
-function TL({ year, title, text, last = false }) {
-  return (
-    <FadeIn>
-      <div style={{ display: "flex", gap: 20, paddingBottom: last ? 0 : 28 }}>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
-          <div style={{ width: 10, height: 10, borderRadius: "50%", background: accent, flexShrink: 0, marginTop: 4 }} />
-          {!last && <div style={{ width: 2, flex: 1, background: "#e8e8e8", marginTop: 6 }} />}
-        </div>
-        <div style={{ paddingBottom: last ? 0 : 20 }}>
-          <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, letterSpacing: 3, color: "#999", fontWeight: 600, textTransform: "uppercase", marginBottom: 4 }}>{year}</div>
-          <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 16, fontWeight: 700, color: "#1a1a2e", marginBottom: 6 }}>{title}</div>
-          <div style={small}>{text}</div>
-        </div>
-      </div>
-    </FadeIn>
-  );
+#mobile-menu.open{display:block;}
+.mobile-nav-item{
+  padding:10px 0;border-bottom:1px solid #f5f5f5;
+  font-size:14px;color:#666;cursor:pointer;
+  transition:color .2s;
 }
+.mobile-nav-item.active{color:#1a1a2e;font-weight:700;}
+
+/* ── Hero ── */
+#hero-section{
+  position:relative;height:100svh;min-height:480px;
+  display:flex;align-items:flex-end;overflow:hidden;
+}
+#hero-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.hero-grad{position:absolute;inset:0;background:linear-gradient(to top,rgba(26,26,46,.92) 0%,rgba(26,26,46,.3) 55%,transparent 100%);}
+.hero-content{position:relative;z-index:2;padding:0 48px 72px;width:100%;max-width:900px;}
+.hero-eyebrow{font-size:11px;letter-spacing:5px;color:rgba(255,255,255,.6);text-transform:uppercase;margin-bottom:16px;}
+.hero-title{font-family:'Playfair Display',Georgia,serif;font-size:clamp(36px,5vw,72px);font-weight:900;color:white;line-height:1.15;margin:0 0 20px;}
+.hero-desc{font-size:17px;color:rgba(255,255,255,.75);line-height:1.8;max-width:540px;}
+.hero-badges{display:flex;gap:12px;margin-top:28px;flex-wrap:wrap;}
+.hero-badge{
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+  backdrop-filter:blur(8px);padding:8px 14px;
+  font-size:12px;color:rgba(255,255,255,.9);
+}
+.hero-badge strong{font-weight:700;}
+.hero-badge span{color:rgba(255,255,255,.55);margin-left:6px;}
+
+/* ── Stat cards ── */
+.stat-card{border-top:3px solid #1a1a2e;padding-top:16px;}
+.stat-num{
+  font-family:'Playfair Display',Georgia,serif;
+  font-size:clamp(28px,5vw,48px);font-weight:700;
+  line-height:1;display:flex;align-items:baseline;gap:4px;
+}
+.stat-unit{font-size:.45em;font-family:'DM Sans',sans-serif;font-weight:400;color:#666;}
+.stat-label{font-size:12px;color:#888;margin-top:8px;line-height:1.6;}
+
+/* ── Timeline ── */
+.tl-item{display:flex;gap:20px;padding-bottom:28px;}
+.tl-item.last{padding-bottom:0;}
+.tl-line-col{display:flex;flex-direction:column;align-items:center;flex-shrink:0;}
+.tl-dot{width:10px;height:10px;border-radius:50%;background:#1a1a2e;flex-shrink:0;margin-top:4px;}
+.tl-line{width:2px;flex:1;background:#e8e8e8;margin-top:6px;}
+.tl-body{padding-bottom:20px;}
+.tl-year{font-size:11px;letter-spacing:3px;color:#999;font-weight:600;text-transform:uppercase;margin-bottom:4px;}
+.tl-title{font-family:'Playfair Display',Georgia,serif;font-size:16px;font-weight:700;color:#1a1a2e;margin-bottom:6px;}
 
 /* ── Info box ── */
-function InfoBox({ title, children, accent: ac = "#1A1A2E" }) {
-  return (
-    <FadeIn>
-      <div style={{ border: `1px solid #e8e8e8`, borderLeft: `4px solid ${ac}`, padding: "20px 20px", marginBottom: 16, background: "#fafafa" }}>
-        <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, letterSpacing: 3, color: ac, textTransform: "uppercase", fontWeight: 700, marginBottom: 10 }}>{title}</div>
-        {children}
-      </div>
-    </FadeIn>
-  );
+.info-box{
+  border:1px solid #e8e8e8;border-left:4px solid #1a1a2e;
+  padding:20px;margin-bottom:16px;background:#fafafa;
 }
+.info-box-title{font-size:11px;letter-spacing:3px;color:#1a1a2e;text-transform:uppercase;font-weight:700;margin-bottom:10px;}
 
 /* ── Row item ── */
-function Row({ icon, title, text }) {
-  return (
-    <div style={{ display: "flex", gap: 14, padding: "14px 0", borderBottom: "1px solid #f0f0f0", alignItems: "flex-start" }}>
-      <div style={{ fontSize: 20, flexShrink: 0, width: 30 }}>{icon}</div>
+.row-item{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid #f0f0f0;align-items:flex-start;}
+.row-icon{font-size:20px;flex-shrink:0;width:30px;}
+.row-title{font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:3px;}
+
+/* ── Dark block ── */
+.dark-block{background:#1a1a2e;color:white;padding:40px 44px;margin-bottom:32px;}
+.dark-block-eyebrow{font-size:11px;letter-spacing:4px;color:rgba(255,255,255,.45);text-transform:uppercase;margin-bottom:10px;}
+.dark-block-title{font-family:'Playfair Display',serif;font-size:clamp(20px,3vw,30px);font-weight:700;margin-bottom:24px;line-height:1.2;}
+.dark-block-sub{font-size:.6em;font-weight:400;color:rgba(255,255,255,.6);}
+.dark-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;margin-bottom:28px;}
+.dark-stat{border-top:2px solid rgba(255,255,255,.2);padding-top:12px;}
+.dark-stat-num{font-family:'Playfair Display',serif;font-size:clamp(18px,3vw,24px);font-weight:700;color:white;line-height:1;}
+.dark-stat-label{font-size:11px;color:rgba(255,255,255,.5);margin-top:6px;line-height:1.5;}
+.dark-text{font-size:13px;color:rgba(255,255,255,.55);line-height:1.8;}
+
+/* ── ERP dark block ── */
+.erp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+.erp-item-title{font-size:12px;font-weight:700;color:rgba(255,255,255,.7);margin-bottom:6px;letter-spacing:1px;}
+.erp-item-text{font-size:13px;color:rgba(255,255,255,.55);line-height:1.7;}
+
+/* ── Future rail cards ── */
+.future-card{border:1px solid #e8e8e8;border-top:4px solid #1a1a2e;padding:24px 20px;}
+.future-card-phase{font-size:11px;letter-spacing:2px;font-weight:700;margin-bottom:8px;text-transform:uppercase;}
+.future-card-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:700;color:#1a1a2e;margin-bottom:10px;}
+
+/* ── Learning cards ── */
+.learn-item{display:flex;gap:20px;padding:20px 0;border-bottom:1px solid #eee;}
+.learn-num{font-family:'Playfair Display',serif;font-size:32px;font-weight:900;color:#e8e8e8;flex-shrink:0;line-height:1;}
+.learn-title{font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:6px;}
+
+/* ── Inset boxes ── */
+.inset-row{display:flex;flex-direction:column;gap:10px;}
+.inset-item{padding-left:12px;border-left:2px solid #1a1a2e;}
+.inset-title{font-size:13px;font-weight:700;margin-bottom:3px;}
+
+/* ── Closing quote ── */
+.quote-wrap{border-left:6px solid #1a1a2e;padding-left:36px;padding-top:4px;padding-bottom:4px;margin-top:52px;}
+blockquote{font-family:'Playfair Display',Georgia,serif;font-size:clamp(18px,2.5vw,26px);font-style:italic;font-weight:700;color:#1a1a2e;line-height:1.5;}
+.quote-attr{font-size:13px;color:#aaa;margin-top:14px;}
+
+/* ── Footer ── */
+#site-footer{background:#1a1a2e;color:white;padding:52px 48px 32px;}
+.footer-inner{max-width:840px;margin:0 auto;}
+.footer-title{font-family:'Playfair Display',serif;font-size:26px;font-weight:700;margin-bottom:8px;}
+.footer-sub{font-size:12px;color:rgba(255,255,255,.4);margin-bottom:24px;}
+.footer-nav{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:28px;}
+.footer-btn{border:1px solid rgba(255,255,255,.15);background:none;color:rgba(255,255,255,.55);font-size:11px;padding:5px 14px;letter-spacing:1px;}
+.footer-note{font-size:11px;color:rgba(255,255,255,.25);line-height:1.8;}
+
+/* ── Cost table ── */
+.cost-row{display:flex;justify-content:space-between;font-size:13px;border-bottom:1px solid #eee;padding:6px 0;color:#444;}
+.cost-note{font-size:11px;color:#aaa;margin-top:6px;}
+
+/* ── Responsive ── */
+@media(max-width:640px){
+  .section-pad{padding:60px 20px;}
+  .section-alt{padding:60px 20px;}
+  .grid2{grid-template-columns:1fr;}
+  .grid3{grid-template-columns:1fr 1fr;}
+  .grid4{grid-template-columns:1fr 1fr;gap:12px;}
+  .grid-future{grid-template-columns:1fr;}
+  .dark-grid{grid-template-columns:1fr 1fr;gap:16px;}
+  .erp-grid{grid-template-columns:1fr;}
+  #desktop-nav{display:none;}
+  #hamburger{display:block;}
+  #site-header{padding:12px 20px;}
+  .header-logo{font-size:14px;}
+  #hero-section{height:80svh;}
+  .hero-content{padding:0 20px 48px;}
+  .hero-title{font-size:clamp(28px,8vw,44px);}
+  .hero-desc{font-size:14px;}
+  .hero-badge{font-size:11px;}
+  .dark-block{padding:28px 20px;}
+  .dark-block-title{font-size:20px;}
+  .quote-wrap{padding-left:20px;}
+  #site-footer{padding:40px 20px 28px;}
+  .footer-title{font-size:20px;}
+  .chapter-title{font-size:clamp(22px,6vw,30px);}
+  .future-card{padding:18px 16px;}
+  .future-card-title{font-size:15px;}
+  .stat-num{font-size:clamp(24px,5vw,40px);}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<header id="site-header">
+  <div class="header-logo">シンガポール交通ガイド</div>
+  <nav id="desktop-nav">
+    <button class="nav-btn active" onclick="goTo('s1')">交通の歴史</button>
+    <button class="nav-btn" onclick="goTo('s2')">チャンギ空港</button>
+    <button class="nav-btn" onclick="goTo('s3')">公共交通</button>
+    <button class="nav-btn" onclick="goTo('s4')">車の所有</button>
+    <button class="nav-btn" onclick="goTo('s5')">将来の展望</button>
+    <button class="nav-btn" onclick="goTo('s6')">まとめ</button>
+  </nav>
+  <button id="hamburger" onclick="toggleMenu()" aria-label="メニュー">☰</button>
+</header>
+
+<!-- ══ MOBILE MENU ══ -->
+<div id="mobile-menu">
+  <div class="mobile-nav-item active" onclick="goTo('s1')">交通の歴史</div>
+  <div class="mobile-nav-item" onclick="goTo('s2')">チャンギ空港</div>
+  <div class="mobile-nav-item" onclick="goTo('s3')">公共交通</div>
+  <div class="mobile-nav-item" onclick="goTo('s4')">車の所有</div>
+  <div class="mobile-nav-item" onclick="goTo('s5')">将来の展望</div>
+  <div class="mobile-nav-item" onclick="goTo('s6')">まとめ</div>
+</div>
+
+<!-- ══ HERO ══ -->
+<div id="hero-section">
+  <img id="hero-img" src="https://images.unsplash.com/photo-1525625293386-3f8f99389edd?w=1400&q=80" alt="Singapore skyline">
+  <div class="hero-grad"></div>
+  <div class="hero-content fade visible">
+    <div class="hero-eyebrow">Singapore Transport &amp; Airport Guide</div>
+    <h1 class="hero-title">世界が認めた<br>都市交通の<br>最前線</h1>
+    <p class="hero-desc">MRT・バス・チャンギ空港——シンガポールが誇る交通インフラの全貌と、未来へ向けた壮大な拡張計画を読み解く。</p>
+    <div class="hero-badges">
+      <div class="hero-badge"><strong>🏅 Skytrax 世界No.1空港</strong><span>2025年</span></div>
+      <div class="hero-badge"><strong>🚇 MRT 143駅</strong><span>日間350万乗降</span></div>
+      <div class="hero-badge"><strong>🔮 2040年に路線倍増</strong><span>計画進行中</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SECTION 1: HISTORY ══ -->
+<section id="s1" class="section-pad">
+  <div class="max-w">
+    <div class="fade">
+      <div class="chapter-label">Chapter 01</div>
+      <h2 class="chapter-title">シンガポール交通の発展史と政府戦略</h2>
+      <p class="chapter-sub">History of Singapore's Transport Development &amp; Government Strategy</p>
+      <div class="chapter-line"></div>
+    </div>
+
+    <div class="grid2" style="margin-top:48px;">
+      <!-- Left: timeline -->
       <div>
-        <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 700, color: "#1a1a2e", marginBottom: 3 }}>{title}</div>
-        <div style={small}>{text}</div>
-      </div>
-    </div>
-  );
-}
-
-/* ── Nav section links ── */
-const NAVS = [
-  { id: "s1", label: "交通の歴史" },
-  { id: "s2", label: "チャンギ空港" },
-  { id: "s3", label: "公共交通" },
-  { id: "s4", label: "車の所有" },
-  { id: "s5", label: "将来の展望" },
-  { id: "s6", label: "まとめ" },
-];
-
-export default function App() {
-  const w = useW();
-  const sp = w < 640;
-  const [active, setActive] = useState("s1");
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    const obs = new IntersectionObserver(
-      entries => entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); }),
-      { threshold: 0.2 }
-    );
-    NAVS.forEach(({ id }) => { const el = document.getElementById(id); if (el) obs.observe(el); });
-    return () => obs.disconnect();
-  }, []);
-
-  const go = id => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-    setMenuOpen(false);
-  };
-
-  const PX = sp ? 20 : 48;
-  const secStyle = { padding: `${sp ? 60 : 100}px ${PX}px`, borderBottom: "1px solid #f0f0f0" };
-  const altStyle = { ...secStyle, background: "#f9f8f6" };
-  const maxW = { maxWidth: 840, margin: "0 auto" };
-  const grid2 = { display: "grid", gridTemplateColumns: sp ? "1fr" : "1fr 1fr", gap: sp ? 20 : 40 };
-  const grid3 = { display: "grid", gridTemplateColumns: sp ? "1fr 1fr" : "repeat(3,1fr)", gap: sp ? 16 : 28 };
-  const grid4 = { display: "grid", gridTemplateColumns: sp ? "1fr 1fr" : "repeat(4,1fr)", gap: sp ? 12 : 24 };
-
-  return (
-    <div style={{ fontFamily: "'DM Sans', sans-serif", background: "#fff", color: "#1a1a2e", overflowX: "hidden" }}>
-      <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
-
-      {/* ── HEADER NAV ── */}
-      <header style={{ position: "sticky", top: 0, background: "rgba(255,255,255,0.97)", borderBottom: "1px solid #eee", zIndex: 100, padding: sp ? "12px 20px" : "14px 48px", display: "flex", justifyContent: "space-between", alignItems: "center", backdropFilter: "blur(10px)" }}>
-        <div style={{ fontFamily: "'Playfair Display', serif", fontSize: sp ? 14 : 16, fontWeight: 700, color: accent }}>シンガポール交通ガイド</div>
-        {sp ? (
-          <button onClick={() => setMenuOpen(!menuOpen)} style={{ border: "none", background: "none", fontSize: 22, cursor: "pointer", color: accent }}>☰</button>
-        ) : (
-          <nav style={{ display: "flex", gap: 24 }}>
-            {NAVS.map(({ id, label }) => (
-              <button key={id} onClick={() => go(id)} style={{ border: "none", background: "none", fontSize: 12, letterSpacing: 1, color: active === id ? accent : "#aaa", cursor: "pointer", fontWeight: active === id ? 700 : 400, padding: "4px 0", borderBottom: active === id ? `2px solid ${accent}` : "2px solid transparent", transition: "all .2s", fontFamily: "'DM Sans', sans-serif" }}>
-                {label}
-              </button>
-            ))}
-          </nav>
-        )}
-      </header>
-
-      {/* ── SP DROPDOWN MENU ── */}
-      {sp && menuOpen && (
-        <div style={{ position: "fixed", top: 50, left: 0, right: 0, background: "white", borderBottom: "1px solid #eee", zIndex: 99, padding: "12px 20px" }}>
-          {NAVS.map(({ id, label }) => (
-            <div key={id} onClick={() => go(id)} style={{ padding: "10px 0", borderBottom: "1px solid #f5f5f5", fontSize: 14, fontWeight: active === id ? 700 : 400, color: active === id ? accent : "#666", cursor: "pointer" }}>{label}</div>
-          ))}
+        <div class="fade">
+          <p class="body-text" style="margin-bottom:32px;">独立後わずか60年で、シンガポールは世界最高水準の都市交通網を構築した。その背景には、一貫した長期ビジョンと「公共交通優先」の政府戦略がある。</p>
         </div>
-      )}
 
-      {/* ════ HERO ════ */}
-      <div style={{ position: "relative", height: sp ? "80svh" : "100svh", minHeight: 480, display: "flex", alignItems: "flex-end", overflow: "hidden" }}>
-        <img src={IMGS.hero} alt="Singapore skyline" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(26,26,46,0.92) 0%, rgba(26,26,46,0.3) 55%, transparent 100%)" }} />
-        <div style={{ position: "relative", zIndex: 2, padding: sp ? "0 20px 48px" : "0 48px 72px", width: "100%", maxWidth: 900 }}>
-          <FadeIn>
-            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, letterSpacing: 5, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", marginBottom: 16 }}>Singapore Transport & Airport Guide</div>
-            <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: sp ? "clamp(28px,8vw,44px)" : "clamp(36px,5vw,72px)", fontWeight: 900, color: "white", lineHeight: 1.15, margin: "0 0 20px" }}>
-              世界が認めた<br />都市交通の<br />最前線
-            </h1>
-            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: sp ? 14 : 17, color: "rgba(255,255,255,0.75)", lineHeight: 1.8, maxWidth: 540 }}>MRT・バス・チャンギ空港——シンガポールが誇る交通インフラの全貌と、未来へ向けた壮大な拡張計画を読み解く。</p>
-            <div style={{ display: "flex", gap: 12, marginTop: 28, flexWrap: "wrap" }}>
-              {[["🏅 Skytrax 世界No.1空港","2025年"], ["🚇 MRT 143駅","日間350万乗降"], ["🔮 2040年に路線倍増","計画進行中"]].map(([a, b]) => (
-                <div key={a} style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", backdropFilter: "blur(8px)", padding: "8px 14px", fontSize: sp ? 11 : 12, color: "rgba(255,255,255,0.9)", fontFamily: "'DM Sans', sans-serif" }}>
-                  <span style={{ fontWeight: 700 }}>{a}</span><span style={{ color: "rgba(255,255,255,0.55)", marginLeft: 6 }}>{b}</span>
-                </div>
-              ))}
-            </div>
-          </FadeIn>
+        <div class="tl-item fade">
+          <div class="tl-line-col"><div class="tl-dot"></div><div class="tl-line"></div></div>
+          <div class="tl-body">
+            <div class="tl-year">1960s</div>
+            <div class="tl-title">独立直後：バス・タクシー中心の時代</div>
+            <p class="small-text">1965年独立当時、シンガポールの公共交通はバス・タクシー・三輪車(trishaw)のみ。道路渋滞と非効率な交通網が経済成長の障壁となっていた。</p>
+          </div>
+        </div>
+        <div class="tl-item fade">
+          <div class="tl-line-col"><div class="tl-dot"></div><div class="tl-line"></div></div>
+          <div class="tl-body">
+            <div class="tl-year">1973</div>
+            <div class="tl-title">Electronic Road Pricing 前身：ALS導入</div>
+            <p class="small-text">世界初の都市部への自動車流入規制「Area Licensing Scheme（ALS）」を導入。CBDへの乗り入れに有料証明書を義務付け、渋滞緩和と交通需要管理の先駆けとなった。</p>
+          </div>
+        </div>
+        <div class="tl-item fade">
+          <div class="tl-line-col"><div class="tl-dot"></div><div class="tl-line"></div></div>
+          <div class="tl-body">
+            <div class="tl-year">1987</div>
+            <div class="tl-title">MRT開業：東南アジア初の地下鉄</div>
+            <p class="small-text">1987年11月7日、北南線の一部（5駅・6km）が開業。東南アジアで初めての地下鉄システム誕生。当時最大のインフラプロジェクトとして国家的な威信をかけた事業だった。</p>
+          </div>
+        </div>
+        <div class="tl-item fade">
+          <div class="tl-line-col"><div class="tl-dot"></div><div class="tl-line"></div></div>
+          <div class="tl-body">
+            <div class="tl-year">1998</div>
+            <div class="tl-title">ERP（電子道路課金）システム導入</div>
+            <p class="small-text">ALSを刷新し、世界初の電子道路課金システム（ERP）を導入。ICタグでリアルタイムに課金し、渋滞に応じて料金を変動させる世界初の需要連動型課金制度として国際的な注目を集めた。</p>
+          </div>
+        </div>
+        <div class="tl-item last fade">
+          <div class="tl-line-col"><div class="tl-dot"></div></div>
+          <div>
+            <div class="tl-year">2019</div>
+            <div class="tl-title">Land Transport Master Plan 2040 発表</div>
+            <p class="small-text">2040年までに「8割の家庭がMRT駅から徒歩10分圏内」「ピーク時の交通手段の75%を公共交通に」という目標を設定。総延長を現在の242kmから約360kmへ倍増する計画を発表。</p>
+          </div>
         </div>
       </div>
 
-      {/* ════ SECTION 1: HISTORY ════ */}
-      <section id="s1" style={secStyle}>
-        <div style={maxW}>
-          <ChapterTitle num="01" ja="シンガポール交通の発展史と政府戦略" en="History of Singapore's Transport Development & Government Strategy" sp={sp} />
-          <FadeIn>
-            <p style={{ ...body, marginBottom: 32 }}>
-              独立後わずか60年で、シンガポールは世界最高水準の都市交通網を構築した。その背景には、一貫した長期ビジョンと「公共交通優先」の政府戦略がある。
-            </p>
-          </FadeIn>
-
-          <div style={{ display: "grid", gridTemplateColumns: sp ? "1fr" : "1fr 1fr", gap: sp ? 32 : 52, marginBottom: 48 }}>
-            <div>
-              <TL year="1960s" title="独立直後：バス・タクシー中心の時代" text="1965年独立当時、シンガポールの公共交通はバス・タクシー・三輪車(trishaw)のみ。道路渋滞と非効率な交通網が経済成長の障壁となっていた。" />
-              <TL year="1973" title="Electronic Road Pricing 前身：ALS導入" text="世界初の都市部への自動車流入規制「Area Licensing Scheme（ALS）」を導入。CBDへの乗り入れに有料証明書を義務付け、渋滞緩和と交通需要管理の先駆けとなった。" />
-              <TL year="1987" title="MRT開業：東南アジア初の地下鉄" text="1987年11月7日、北南線の一部（5駅・6km）が開業。東南アジアで初めての地下鉄システム誕生。当時最大のインフラプロジェクトとして国家的な威信をかけた事業だった。" />
-              <TL year="1998" title="ERP（電子道路課金）システム導入" text="ALSを刷新し、世界初の電子道路課金システム（ERP）を導入。ICタグでリアルタイムに課金し、渋滞に応じて料金を変動させる世界初の需要連動型課金制度として国際的な注目を集めた。" />
-              <TL year="2019" title="Land Transport Master Plan 2040 発表" text="2040年までに「8割の家庭がMRT駅から徒歩10分圏内」「ピーク時の交通手段の75%を公共交通に」という目標を設定。総延長を現在の242kmから約360kmへ倍増する計画を発表。" last />
-            </div>
-            <div>
-              <FadeIn>
-                <img src={IMGS.mrt} alt="Singapore MRT" style={{ width: "100%", height: sp ? 200 : 280, objectFit: "cover", marginBottom: 20 }} />
-              </FadeIn>
-              <InfoBox title="政府戦略の核心：公共交通優先政策" ac={accent}>
-                <div style={small}>
-                  シンガポール政府が一貫して推進してきたのは「<strong>Car-Lite Society（車に依存しない社会）</strong>」の実現。乗用車の増加を抑制するCOE制度、ERP課金、そして公共交通への巨額投資を組み合わせ、渋滞のない都市を維持している。
-                </div>
-              </InfoBox>
-              <InfoBox title="LTA（陸上交通局）の役割" ac="#2C7A7B">
-                <div style={small}>
-                  Land Transport Authority（LTA）は、MRT・バス・タクシー・自動車登録など陸上交通全般を一元管理する政府機関。2030〜2040年に向けた巨大インフラ整備も全てLTAが主導している。
-                </div>
-              </InfoBox>
-              <div style={grid2}>
-                <Stat num="1987" unit="年" label="MRT開業年。東南アジア初の地下鉄" accent={accent} />
-                <Stat num="1998" unit="年" label="世界初のERP（電子道路課金）システム導入" accent="#2C7A7B" delay={0.1} />
-              </div>
-            </div>
+      <!-- Right: image + infoboxes + stats -->
+      <div>
+        <div class="fade">
+          <img src="https://images.unsplash.com/photo-1565043666747-69f6646db940?w=900&q=80" alt="Singapore MRT" style="width:100%;height:280px;object-fit:cover;margin-bottom:20px;">
+        </div>
+        <div class="info-box fade">
+          <div class="info-box-title">政府戦略の核心：公共交通優先政策</div>
+          <p class="small-text">シンガポール政府が一貫して推進してきたのは「<strong>Car-Lite Society（車に依存しない社会）</strong>」の実現。乗用車の増加を抑制するCOE制度、ERP課金、そして公共交通への巨額投資を組み合わせ、渋滞のない都市を維持している。</p>
+        </div>
+        <div class="info-box fade" style="border-left-color:#2C7A7B;">
+          <div class="info-box-title" style="color:#2C7A7B;">LTA（陸上交通局）の役割</div>
+          <p class="small-text">Land Transport Authority（LTA）は、MRT・バス・タクシー・自動車登録など陸上交通全般を一元管理する政府機関。2030〜2040年に向けた巨大インフラ整備も全てLTAが主導している。</p>
+        </div>
+        <div class="grid2 fade" style="gap:20px;margin-top:8px;">
+          <div class="stat-card">
+            <div class="stat-num" style="color:#1a1a2e;">1987<span class="stat-unit">年</span></div>
+            <div class="stat-label">MRT開業年。東南アジア初の地下鉄</div>
+          </div>
+          <div class="stat-card d1" style="border-top-color:#2C7A7B;">
+            <div class="stat-num" style="color:#2C7A7B;">1998<span class="stat-unit">年</span></div>
+            <div class="stat-label">世界初のERP（電子道路課金）システム導入</div>
           </div>
         </div>
-      </section>
-
-      {/* ════ SECTION 2: CHANGI ════ */}
-      <section id="s2" style={altStyle}>
-        <div style={maxW}>
-          <ChapterTitle num="02" ja="チャンギ空港の凄さを数字で読む" en="Changi Airport by the Numbers" sp={sp} />
-
-          <FadeIn>
-            <div style={{ position: "relative", marginBottom: 40, overflow: "hidden" }}>
-              <img src={IMGS.changi} alt="Changi Airport" style={{ width: "100%", height: sp ? 200 : 340, objectFit: "cover" }} />
-              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "linear-gradient(to top, rgba(26,26,46,0.85) 0%, transparent 100%)", padding: sp ? "20px" : "28px 32px" }}>
-                <div style={{ fontFamily: "'Playfair Display', serif", fontSize: sp ? 18 : 26, fontWeight: 700, color: "white" }}>Jewel Changi Airport</div>
-                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "rgba(255,255,255,0.7)", marginTop: 4 }}>40m世界最大の室内滝「Rain Vortex」を擁する複合施設</div>
-              </div>
-            </div>
-          </FadeIn>
-
-          {/* Big stats */}
-          <div style={{ ...grid4, marginBottom: 44 }}>
-            <Stat num="69.98" unit="M" label="2025年旅客数（過去最高・前年比3.4%増）" accent={accent} />
-            <Stat num="13" unit="回" label="Skytrax世界最優秀空港受賞（2025年含む）" accent="#C0392B" delay={0.1} />
-            <Stat num="374,000" unit="回" label="2025年の航空機離着陸数（前年比2.2%増）" accent="#2C7A7B" delay={0.2} />
-            <Stat num="2.08" unit="Mt" label="2025年航空貨物量（過去最高水準）" accent="#7D3C98" delay={0.3} />
-          </div>
-
-          <div style={grid2}>
-            <div>
-              <FadeIn>
-                <p style={{ ...body, marginBottom: 24 }}>
-                  1981年に開港したチャンギ空港は、わずか44年で世界最高峰の空港へと成長した。Skytrax「世界最優秀空港」受賞13回（うち2013〜2020年の8年連続含む）という前人未到の記録は、その地位の高さを物語る。
-                </p>
-              </FadeIn>
-              {[
-                { icon: "✈️", title: "ハブ空港としての規模", text: "2025年時点で163都市を結ぶネットワーク。2030年代に向けT5完成後は200都市超を目標。国際旅客数で世界第4位（2025年）。" },
-                { icon: "⚡", title: "圧倒的な処理速度", text: "約80秒に1便の発着。入国審査の平均待ち時間は世界最短クラス。バゲージクレームまでの所要時間も業界基準を大幅に下回る。" },
-                { icon: "🛍️", title: "Jewel Changi Airport", text: "2019年開業のT1〜3直結複合施設。世界最大の室内滝（40m）「Rain Vortex」を中心に300以上の店舗・飲食・ホテルが集結。空港の枠を超えた観光地。" },
-                { icon: "🤖", title: "テクノロジーと快適性", text: "生体認証による自動入出国。AI活用の手荷物管理。全ターミナルにシャワー・映画館・プール（T1屋上）・スパ・無料トランジットツアーまで完備。" },
-              ].map(r => <Row key={r.title} {...r} />)}
-            </div>
-            <div>
-              <FadeIn delay={0.1}>
-                <img src={IMGS.jewel} alt="Jewel Changi" style={{ width: "100%", height: sp ? 200 : 260, objectFit: "cover", marginBottom: 20 }} />
-              </FadeIn>
-              <InfoBox title="チャンギが強い本当の理由" ac="#C0392B">
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {[
-                    ["地理的優位性", "ASEAN・南アジア・東アジア・オーストラリアの結節点に位置。乗継地として最適なロケーション。"],
-                    ["官民一体の運営", "Changi Airport Group（CAG）が政府支援のもと経営。長期投資が容易な独自のガバナンス。"],
-                    ["絶え間ない改善文化", "常に施設を改修・更新し、受賞しても満足しない「カイゼン」精神が根付いている。"],
-                    ["人材の質", "空港スタッフへの継続的な教育・評価制度。優れたサービスが利用者体験を底上げ。"],
-                  ].map(([t, b]) => (
-                    <div key={t} style={{ paddingLeft: 12, borderLeft: "2px solid #C0392B" }}>
-                      <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 700, marginBottom: 3 }}>{t}</div>
-                      <div style={small}>{b}</div>
-                    </div>
-                  ))}
-                </div>
-              </InfoBox>
-              <div style={grid2}>
-                <Stat num="100+" unit="社" label="乗り入れ航空会社数" accent={accent} />
-                <Stat num="700+" unit="賞" label="開港以来の受賞数（2025年は28冠）" accent="#C0392B" delay={0.1} />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ════ SECTION 3: PUBLIC TRANSPORT ════ */}
-      <section id="s3" style={secStyle}>
-        <div style={maxW}>
-          <ChapterTitle num="03" ja="公共交通機関の利便性を数字で見る" en="Singapore's World-Class Public Transport by the Numbers" sp={sp} />
-
-          <div style={grid2}>
-            <div>
-              <FadeIn>
-                <img src={IMGS.bus} alt="Singapore bus" style={{ width: "100%", height: sp ? 180 : 260, objectFit: "cover", marginBottom: 24 }} />
-              </FadeIn>
-              <FadeIn delay={0.1}>
-                <p style={{ ...body, marginBottom: 28 }}>
-                  シンガポールのMRT・バスネットワークは、国土が東京23区程度（約733km²）という狭さを活かし、驚異的な密度で整備されている。
-                </p>
-              </FadeIn>
-              {[
-                { icon: "🚇", title: "MRT：6路線143駅・約242km", text: "1987年開業以来、着実に拡張。2024年の一日平均乗降者数は341万人（2024年）と2019年比でコロナ前水準を上回り回復。運行時間は5:30〜翌1:00。" },
-                { icon: "🚌", title: "バス：約360路線・5,000台超", text: "MRTが届かないエリアも徒歩5〜10分圏内をカバー。2024年の一日平均乗降者数384万人。9億ドルを8年間投入する改善プログラムが進行中。" },
-                { icon: "💳", title: "EZ-Linkカード：全交通共通IC", text: "一枚のカードでMRT・バス・LRTを乗り継ぎ可能。Apple Pay/Google Payでもタッチ乗車対応。旅行者にはチャージ式プリペイドカードが便利。" },
-                { icon: "⏱️", title: "定時運行率 99.38%（2025年）", text: "2025年のMRT定時運行率は99.38%（2024年比+0.03%）。故障間隔は160万train-km（政府目標100万の1.6倍）。世界最高水準の信頼性。" },
-              ].map(r => <Row key={r.title} {...r} />)}
-            </div>
-            <div>
-              <div style={{ ...grid2, marginBottom: 24 }}>
-                <Stat num="3.41" unit="M/日" label="2024年MRT一日乗降者数（2019年超え）" accent={accent} />
-                <Stat num="99.38" unit="%" label="2025年のMRT定時運行率" accent="#2C7A7B" delay={0.1} />
-                <Stat num="242.6" unit="km" label="現在のMRT総延長（6路線143駅）" accent="#C0392B" delay={0.2} />
-                <Stat num="10" unit="分" label="2030年代目標：全家庭の8割がMRT駅から徒歩圏" accent="#7D3C98" delay={0.3} />
-              </div>
-              <InfoBox title="運賃体系と割引制度" ac="#2C7A7B">
-                <div style={{ ...small }}>
-                  <strong>基本運賃：</strong>距離に応じた段階制。バスとMRTの乗り継ぎは割引あり。<br /><br />
-                  <strong>CEPAS統合割引：</strong>バス→MRT等の乗り継ぎで自動的に割引適用。<br /><br />
-                  <strong>Seniors/学生割引：</strong>65歳以上・学生は大幅割引。シンガポール市民・PRは追加の割引カードあり。<br /><br />
-                  <strong>月上限キャップ：</strong>一定金額を超えると自動的に割引が適用される月間上限制度あり。
-                </div>
-              </InfoBox>
-              <InfoBox title="Grab（配車アプリ）の普及" ac="#1a7f37">
-                <div style={small}>
-                  東南アジア版Uberとも言えるGrabは、シンガポールで最も使われる配車サービス。2024年の一日平均利用数43.1万件（2019年比増）。MRTとの組み合わせで「ラストワンマイル問題」を解消している。
-                </div>
-              </InfoBox>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ════ SECTION 4: CAR OWNERSHIP ════ */}
-      <section id="s4" style={altStyle}>
-        <div style={maxW}>
-          <ChapterTitle num="04" ja="車を持つメリットと所有のための条件" en="Car Ownership in Singapore: Worth It?" sp={sp} />
-
-          <FadeIn>
-            <p style={{ ...body, marginBottom: 32 }}>
-              シンガポールの車は「世界で最も高い」と言われる。政府の意図的な価格政策と、限られた道路容量を守るための規制の結果だ。しかしそれでも車を所有することで得られる利便性は、多くの住民にとって魅力的だ。
-            </p>
-          </FadeIn>
-
-          <div style={grid2}>
-            <div>
-              <FadeIn>
-                <img src={IMGS.car} alt="Car Singapore" style={{ width: "100%", height: sp ? 180 : 240, objectFit: "cover", marginBottom: 24 }} />
-              </FadeIn>
-
-              <InfoBox title="COE（車両資格証明書）制度とは？" ac={accent}>
-                <div style={small}>
-                  COE（Certificate of Entitlement）は、シンガポールで車を所有・登録・使用するための10年間の許可証。<strong>毎月2回のオークション制（入札式）</strong>で決定される。需要と供給によって価格が変動し、現在はCat A（1.6L以下）で約S$10万前後、Cat B（1.6L超）で約S$12万前後。COEそのものが車体価格を大幅に上回ることも珍しくない。
-                </div>
-              </InfoBox>
-
-              <InfoBox title="車の総費用の内訳（新車・中型セダンの場合）" ac="#C0392B">
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {[
-                    ["COE（Cat A）", "〜S$10万（入札次第）", "#C0392B"],
-                    ["車体本体価格（OMV込）", "S$2〜4万", "#666"],
-                    ["ARF（追加登録税）", "OMVの100〜220%以上", "#666"],
-                    ["GST（消費税9%）", "車体価格に課税", "#666"],
-                    ["初年度合計（目安）", "S$14〜18万〜", accent],
-                  ].map(([l, v, c]) => (
-                    <div key={l} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, borderBottom: "1px solid #eee", padding: "6px 0", color: "#444" }}>
-                      <span>{l}</span><span style={{ fontWeight: 700, color: c }}>{v}</span>
-                    </div>
-                  ))}
-                  <div style={{ fontSize: 11, color: "#aaa", marginTop: 6 }}>※10年間の総所有コストはS$20〜25万が一般的な試算</div>
-                </div>
-              </InfoBox>
-            </div>
-
-            <div>
-              <InfoBox title="車を持つメリット" ac="#1a7f37">
-                {[
-                  { icon: "🌙", title: "深夜・早朝の自由な移動", text: "MRTの終電後（深夜1時〜5時半）もどこへでも移動可能。特に深夜シフトの仕事、早朝の空港送迎などで絶大な価値を発揮。" },
-                  { icon: "👨‍👩‍👧", title: "ファミリーの利便性", text: "子供の送り迎え、週末の郊外へのお出かけ、大量の買い物など、家族がいる場合の移動の自由度は格段に上がる。" },
-                  { icon: "🇲🇾", title: "マレーシアへの陸路移動", text: "JB（ジョホールバル）への買い物・週末旅行が自由自在に。食料品・ガソリン代などでシンガポール生活コストを削減できる。" },
-                  { icon: "💼", title: "ビジネス上の優位性", text: "クライアント訪問・商談・深夜や週末のミーティングなど、ビジネス上の柔軟性が向上。車での移動がステータスになることも。" },
-                ].map(r => <Row key={r.title} {...r} />)}
-              </InfoBox>
-
-              <InfoBox title="賢い所有方法" ac="#7D3C98">
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {[
-                    { t: "オフピーク車（OPC）の活用", b: "平日7:00〜19:00はCBDなど混雑エリアへの乗り入れ制限あり。その代わりCOEが安く（Cat E扱い）、同じ車種でも数万S$安くなる。週末メインの使用なら非常にコスパが良い。" },
-                    { t: "中古車（5〜7年落ち）購入", b: "COE残存期間を確認した上で購入。残存5年でCOEを更新（PARF不適用）するより、残存長い中古を狙う戦略もある。維持費と相談しながら判断を。" },
-                    { t: "EV（電気自動車）の選択", b: "政府のVES（排出量規制）で最大S$2.5万の補助金（2025年時点）。EEAIでARFを最大45%削減も。ガソリン代不要でランニングコスト大幅削減。" },
-                    { t: "COE入札のタイミング", b: "COEは月2回入札。直近の結果や供給量を確認し、価格が下がるタイミングを狙う。LTAが2025年〜2万枚の追加放出を進めており、価格が落ち着く可能性も。" },
-                  ].map(({ t, b }) => (
-                    <div key={t} style={{ borderLeft: "2px solid #7D3C98", paddingLeft: 12 }}>
-                      <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 700, marginBottom: 3 }}>{t}</div>
-                      <div style={small}>{b}</div>
-                    </div>
-                  ))}
-                </div>
-              </InfoBox>
-            </div>
-          </div>
-
-          {/* ERP explanation */}
-          <FadeIn style={{ marginTop: 32 }}>
-            <div style={{ background: "#1a1a2e", color: "white", padding: sp ? "28px 20px" : "36px 40px" }}>
-              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, letterSpacing: 4, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", marginBottom: 12 }}>ERP 2.0 システム</div>
-              <div style={{ fontFamily: "'Playfair Display', serif", fontSize: sp ? 18 : 24, fontWeight: 700, marginBottom: 16 }}>世界最先端の渋滞課金「ERP 2.0」</div>
-              <div style={{ display: "grid", gridTemplateColumns: sp ? "1fr" : "1fr 1fr 1fr", gap: 20 }}>
-                {[
-                  { t: "仕組み", b: "車載OBUデバイスが路上のゲートレスシステムと通信し、時間・場所・混雑度に応じてリアルタイムに課金。旧IUを刷新し2025年より本格稼働。" },
-                  { t: "料金帯", b: "混雑状況に応じて動的に変動。通常S$0.5〜4.0/通過。ピーク時のCBD入域は累積で一日数ドルになることも。ERP 2.0でより細かい課金が可能に。" },
-                  { t: "目的と効果", b: "道路容量の最適化と渋滞緩和が目的。高い課金により車の利用を抑制し、公共交通への誘導効果を生む。1998年導入以来、渋滞時間を大幅に削減した実績。" },
-                ].map(({ t, b }) => (
-                  <div key={t}>
-                    <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.7)", marginBottom: 6, letterSpacing: 1 }}>{t}</div>
-                    <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", lineHeight: 1.7 }}>{b}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </FadeIn>
-        </div>
-      </section>
-
-      {/* ════ SECTION 5: FUTURE ════ */}
-      <section id="s5" style={secStyle}>
-        <div style={maxW}>
-          <ChapterTitle num="05" ja="将来を見据えた交通・空港拡張計画" en="Singapore's Ambitious Transport Future: 2030–2040 and Beyond" sp={sp} />
-
-          <FadeIn>
-            <p style={{ ...body, marginBottom: 40 }}>
-              シンガポールは「現在の成功」に満足しない。2040年に向け、MRT路線倍増・新規路線・空港ターミナル5建設など、国家規模のインフラ投資が進んでいる。その規模と緻密さは世界の都市計画のモデルになっている。
-            </p>
-          </FadeIn>
-
-          <FadeIn>
-            <img src={IMGS.future} alt="Future Singapore" style={{ width: "100%", height: sp ? 180 : 280, objectFit: "cover", marginBottom: 40 }} />
-          </FadeIn>
-
-          {/* Future rail grid */}
-          <div style={{ display: "grid", gridTemplateColumns: sp ? "1fr" : "1fr 1fr", gap: sp ? 16 : 24, marginBottom: 40 }}>
-            {[
-              { ac: "#C0392B", icon: "🔴", title: "クロスアイランドライン（CRL）", phase: "Phase 1: 2030 / Phase 2: 2032 / Phase 3: 2030年代後半", body: "シンガポール最長の全地下路線（全3フェーズで約70km・27駅）。チャンギからジュロンまで東西を横断し、既存のEWL・DTLの混雑を大幅に緩和。Phase 1はChangi〜Bright Hillの12駅（29km）を2030年開通予定。また2035年頃にはチャンギ空港T5への延伸も確定。" },
-              { ac: "#2980B9", icon: "🩵", title: "ジュロン・リージョン・ライン（JRL）", phase: "開通準備中・段階的開業", body: "ジュロン工業地帯を中心に西部を結ぶ新路線（27駅）。Choa Chu KangからJurong Pierまでを南北に縦断。2030年代後半には西海岸まで延伸予定で、NTU（南洋理工大学）エリアも接続する計画が進行中。" },
-              { ac: "#27AE60", icon: "🟢", title: "Thomson–East Coast Line（TEL）延伸", phase: "Stage 5: 2025年内 / T5延伸: 2030年代", body: "現在のTELをさらに東海岸・チャンギ方面へ延伸。2025年内にDTL3e・TEL5の新駅が開業予定。最終的にはチャンギ空港T5まで直結し、CRLとも接続するシンガポール最大のハブ駅が生まれる。" },
-              { ac: "#8E44AD", icon: "🟣", title: "CCL6・Seletar Line・Tengah Line（構想）", phase: "CCL6: 2025年内 / その他 2030年代〜", body: "CCL（サークルライン）の6段目は3駅を追加しループを完成させ2025年内開通予定。新たにSeletar LineとTengah Lineの工学調査を2026年から開始。将来的には南北東西を網羅するネットワークが完成する。" },
-            ].map(({ ac, icon, title, phase, body: b }) => (
-              <FadeIn key={title}>
-                <div style={{ border: "1px solid #e8e8e8", borderTop: `4px solid ${ac}`, padding: sp ? "18px 16px" : "24px 20px" }}>
-                  <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, letterSpacing: 2, color: ac, fontWeight: 700, marginBottom: 8, textTransform: "uppercase" }}>{icon} {phase}</div>
-                  <div style={{ fontFamily: "'Playfair Display', serif", fontSize: sp ? 15 : 17, fontWeight: 700, color: "#1a1a2e", marginBottom: 10 }}>{title}</div>
-                  <div style={small}>{b}</div>
-                </div>
-              </FadeIn>
-            ))}
-          </div>
-
-          {/* Changi T5 */}
-          <FadeIn>
-            <div style={{ background: "#1a1a2e", color: "white", padding: sp ? "28px 20px" : "40px 44px", marginBottom: 32 }}>
-              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, letterSpacing: 4, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", marginBottom: 10 }}>Changi Airport — The Future</div>
-              <div style={{ fontFamily: "'Playfair Display', serif", fontSize: sp ? 20 : 30, fontWeight: 700, marginBottom: 24, lineHeight: 1.2 }}>ターミナル5（T5）建設計画<br /><span style={{ fontSize: "0.6em", fontWeight: 400, color: "rgba(255,255,255,0.6)" }}>Groundbreaking: May 2025 / Expected completion: Mid-2030s</span></div>
-              <div style={{ display: "grid", gridTemplateColumns: sp ? "1fr 1fr" : "repeat(4,1fr)", gap: sp ? 16 : 24, marginBottom: 28 }}>
-                {[
-                  ["5,000万人/年", "T5単体の旅客処理能力"],
-                  ["55%増", "現在の年間9,000万人から1億4,000万人へ"],
-                  ["200都市超", "T5完成後の目標都市ネットワーク数"],
-                  ["CRL＋TEL", "T5に乗り入れる2つのMRT路線"],
-                ].map(([v, l]) => (
-                  <div key={l} style={{ borderTop: "2px solid rgba(255,255,255,0.2)", paddingTop: 12 }}>
-                    <div style={{ fontFamily: "'Playfair Display', serif", fontSize: sp ? 18 : 24, fontWeight: 700, color: "white", lineHeight: 1 }}>{v}</div>
-                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 6, lineHeight: 1.5 }}>{l}</div>
-                  </div>
-                ))}
-              </div>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", lineHeight: 1.8 }}>
-                2025年5月14日、ローレンス・ウォン首相が起工式を執り行ったT5は、現在の4ターミナルの合計に匹敵する規模の新ターミナル。埋め立て地に建設され、MRT2路線の直結アクセスを確保。単なる空港拡張ではなく、シンガポールをアジア最大の航空ハブとして確立するための国家戦略プロジェクト。
-              </div>
-            </div>
-          </FadeIn>
-
-          <div style={{ ...grid3, marginBottom: 0 }}>
-            <Stat num="360" unit="km" label="2040年のMRT目標総延長（現在の約1.5倍）" accent={accent} />
-            <Stat num="80" unit="%" label="2030年代に達成する「全家庭の徒歩10分以内」目標" accent="#2C7A7B" delay={0.1} />
-            <Stat num="140" unit="M人/年" label="T5完成後のチャンギ空港の旅客処理能力目標" accent="#C0392B" delay={0.2} />
-          </div>
-        </div>
-      </section>
-
-      {/* ════ SECTION 6: SUMMARY ════ */}
-      <section id="s6" style={altStyle}>
-        <div style={maxW}>
-          <ChapterTitle num="06" ja="シンガポールの交通から学べること" en="Key Lessons from Singapore's Transport Success Story" sp={sp} />
-
-          <FadeIn>
-            <img src={IMGS.city} alt="Singapore city" style={{ width: "100%", height: sp ? 180 : 280, objectFit: "cover", marginBottom: 40 }} />
-          </FadeIn>
-
-          <div style={grid2}>
-            <div>
-              {[
-                { num: "01", title: "長期ビジョンへの投資を惜しまない", text: "シンガポール政府は常に「10〜20年後」を見越したインフラ計画を策定し、実行する。短期的な費用対効果だけでなく、都市の持続可能性への信念が投資を継続させる。" },
-                { num: "02", title: "インセンティブとディスインセンティブの両立", text: "公共交通を便利にするだけでなく、COE・ERP・ARFなどで自動車の「使いにくさ」も設計する。使う行動を誘導するだけでなく、使わない行動も誘導する二重戦略。" },
-                { num: "03", title: "「世界No.1」でも改善を止めない文化", text: "チャンギ空港はSkytrax 13回受賞後も、T5建設・テクノロジー投資・サービス向上を止めない。現状維持ではなく「現在地からの飛躍」を常に追求する組織文化。" },
-              ].map(({ num, title, text }) => (
-                <FadeIn key={num}>
-                  <div style={{ display: "flex", gap: 20, padding: "20px 0", borderBottom: "1px solid #eee" }}>
-                    <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 32, fontWeight: 900, color: "#e8e8e8", flexShrink: 0, lineHeight: 1 }}>{num}</div>
-                    <div>
-                      <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 700, color: "#1a1a2e", marginBottom: 6 }}>{title}</div>
-                      <div style={small}>{text}</div>
-                    </div>
-                  </div>
-                </FadeIn>
-              ))}
-            </div>
-            <div>
-              {[
-                { num: "04", title: "民間の競争と政府監督の絶妙なバランス", text: "LTAが制度設計・標準設定・投資判断を行い、実際の運行はSMRT・SBSという民間企業が担う。公共性と効率性を両立する官民連携モデルが機能している。" },
-                { num: "05", title: "データに基づいた継続的な最適化", text: "ERP料金の動的調整、MRTの故障率管理、バス路線の増減は全て需要データに基づく。「感覚」ではなく「証拠」で意思決定する行政スタイルが精度を高める。" },
-                { num: "06", title: "住む人・来る人の両方を意識した設計", text: "チャンギ空港がJewelを作り、MRTに無料Wi-Fiを提供し、乗継旅行者に無料市内観光ツアーを提供するのは、「通過点」ではなく「目的地」を目指す姿勢の表れ。" },
-              ].map(({ num, title, text }) => (
-                <FadeIn key={num} delay={0.1}>
-                  <div style={{ display: "flex", gap: 20, padding: "20px 0", borderBottom: "1px solid #eee" }}>
-                    <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 32, fontWeight: 900, color: "#e8e8e8", flexShrink: 0, lineHeight: 1 }}>{num}</div>
-                    <div>
-                      <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 700, color: "#1a1a2e", marginBottom: 6 }}>{title}</div>
-                      <div style={small}>{text}</div>
-                    </div>
-                  </div>
-                </FadeIn>
-              ))}
-            </div>
-          </div>
-
-          {/* Closing quote */}
-          <FadeIn style={{ marginTop: 52 }}>
-            <div style={{ borderLeft: `6px solid ${accent}`, paddingLeft: sp ? 20 : 36, paddingTop: 4, paddingBottom: 4 }}>
-              <blockquote style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: sp ? 18 : 26, fontStyle: "italic", fontWeight: 700, color: "#1a1a2e", margin: 0, lineHeight: 1.5 }}>
-                「シンガポールの交通政策は、物理的インフラではなく、<br />都市に住む人々の行動を設計するものだ。」
-              </blockquote>
-              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#aaa", marginTop: 14 }}>— シンガポールの交通哲学</div>
-            </div>
-          </FadeIn>
-        </div>
-      </section>
-
-      {/* ── FOOTER ── */}
-      <footer style={{ background: "#1a1a2e", color: "white", padding: sp ? "40px 20px 28px" : "52px 48px 32px" }}>
-        <div style={{ maxWidth: 840, margin: "0 auto" }}>
-          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: sp ? 20 : 26, fontWeight: 700, marginBottom: 8 }}>シンガポール交通・空港ガイド</div>
-          <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "rgba(255,255,255,0.4)", marginBottom: 24 }}>Singapore Transport & Airport — Comprehensive Guide</div>
-          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 28 }}>
-            {NAVS.map(({ id, label }) => (
-              <button key={id} onClick={() => go(id)} style={{ border: "1px solid rgba(255,255,255,0.15)", background: "none", color: "rgba(255,255,255,0.55)", fontSize: 11, padding: "5px 14px", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", letterSpacing: 1 }}>{label}</button>
-            ))}
-          </div>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", lineHeight: 1.8 }}>
-            本ページの情報はLTA・CAG・Wikipedia等の公開情報をもとに作成しています。数値・計画は変更される場合があります。最新情報は各公式サイトにてご確認ください。Images: Unsplash (CC0 License)
-          </div>
-        </div>
-      </footer>
+      </div>
     </div>
-  );
+  </div>
+</section>
+
+<!-- ══ SECTION 2: CHANGI ══ -->
+<section id="s2" class="section-alt">
+  <div class="max-w">
+    <div class="fade">
+      <div class="chapter-label">Chapter 02</div>
+      <h2 class="chapter-title">チャンギ空港の凄さを数字で読む</h2>
+      <p class="chapter-sub">Changi Airport by the Numbers</p>
+      <div class="chapter-line"></div>
+    </div>
+
+    <div class="fade" style="position:relative;margin:48px 0 32px;overflow:hidden;">
+      <img src="https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=900&q=80" alt="Changi Airport" style="width:100%;height:340px;object-fit:cover;display:block;">
+      <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(26,26,46,.85) 0%,transparent 100%);padding:28px 32px;">
+        <div class="playfair" style="font-size:26px;font-weight:700;color:white;">Jewel Changi Airport</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.7);margin-top:4px;">40m世界最大の室内滝「Rain Vortex」を擁する複合施設</div>
+      </div>
+    </div>
+
+    <div class="grid4" style="margin-bottom:44px;">
+      <div class="stat-card fade">
+        <div class="stat-num" style="color:#1a1a2e;">69.98<span class="stat-unit">M</span></div>
+        <div class="stat-label">2025年旅客数（過去最高・前年比3.4%増）</div>
+      </div>
+      <div class="stat-card d1 fade" style="border-top-color:#C0392B;">
+        <div class="stat-num" style="color:#C0392B;">13<span class="stat-unit">回</span></div>
+        <div class="stat-label">Skytrax世界最優秀空港受賞（2025年含む）</div>
+      </div>
+      <div class="stat-card d2 fade" style="border-top-color:#2C7A7B;">
+        <div class="stat-num" style="color:#2C7A7B;">374,000<span class="stat-unit">回</span></div>
+        <div class="stat-label">2025年の航空機離着陸数（前年比2.2%増）</div>
+      </div>
+      <div class="stat-card d3 fade" style="border-top-color:#7D3C98;">
+        <div class="stat-num" style="color:#7D3C98;">2.08<span class="stat-unit">Mt</span></div>
+        <div class="stat-label">2025年航空貨物量（過去最高水準）</div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div>
+        <div class="fade">
+          <p class="body-text" style="margin-bottom:24px;">1981年に開港したチャンギ空港は、わずか44年で世界最高峰の空港へと成長した。Skytrax「世界最優秀空港」受賞13回（うち2013〜2020年の8年連続含む）という前人未到の記録は、その地位の高さを物語る。</p>
+        </div>
+        <div class="row-item fade"><div class="row-icon">✈️</div><div><div class="row-title">ハブ空港としての規模</div><p class="small-text">2025年時点で163都市を結ぶネットワーク。2030年代に向けT5完成後は200都市超を目標。国際旅客数で世界第4位（2025年）。</p></div></div>
+        <div class="row-item fade"><div class="row-icon">⚡</div><div><div class="row-title">圧倒的な処理速度</div><p class="small-text">約80秒に1便の発着。入国審査の平均待ち時間は世界最短クラス。バゲージクレームまでの所要時間も業界基準を大幅に下回る。</p></div></div>
+        <div class="row-item fade"><div class="row-icon">🛍️</div><div><div class="row-title">Jewel Changi Airport</div><p class="small-text">2019年開業のT1〜3直結複合施設。世界最大の室内滝（40m）「Rain Vortex」を中心に300以上の店舗・飲食・ホテルが集結。空港の枠を超えた観光地。</p></div></div>
+        <div class="row-item fade"><div class="row-icon">🤖</div><div><div class="row-title">テクノロジーと快適性</div><p class="small-text">生体認証による自動入出国。AI活用の手荷物管理。全ターミナルにシャワー・映画館・プール（T1屋上）・スパ・無料トランジットツアーまで完備。</p></div></div>
+      </div>
+      <div>
+        <div class="fade d1">
+          <img src="https://images.unsplash.com/photo-1580221185934-68b8a21e5a7a?w=900&q=80" alt="Jewel Changi" style="width:100%;height:260px;object-fit:cover;margin-bottom:20px;">
+        </div>
+        <div class="info-box fade" style="border-left-color:#C0392B;">
+          <div class="info-box-title" style="color:#C0392B;">チャンギが強い本当の理由</div>
+          <div class="inset-row">
+            <div class="inset-item" style="border-left-color:#C0392B;"><div class="inset-title">地理的優位性</div><p class="small-text">ASEAN・南アジア・東アジア・オーストラリアの結節点に位置。乗継地として最適なロケーション。</p></div>
+            <div class="inset-item" style="border-left-color:#C0392B;"><div class="inset-title">官民一体の運営</div><p class="small-text">Changi Airport Group（CAG）が政府支援のもと経営。長期投資が容易な独自のガバナンス。</p></div>
+            <div class="inset-item" style="border-left-color:#C0392B;"><div class="inset-title">絶え間ない改善文化</div><p class="small-text">常に施設を改修・更新し、受賞しても満足しない「カイゼン」精神が根付いている。</p></div>
+            <div class="inset-item" style="border-left-color:#C0392B;"><div class="inset-title">人材の質</div><p class="small-text">空港スタッフへの継続的な教育・評価制度。優れたサービスが利用者体験を底上げ。</p></div>
+          </div>
+        </div>
+        <div class="grid2 fade" style="gap:20px;">
+          <div class="stat-card">
+            <div class="stat-num" style="color:#1a1a2e;">100+<span class="stat-unit">社</span></div>
+            <div class="stat-label">乗り入れ航空会社数</div>
+          </div>
+          <div class="stat-card d1" style="border-top-color:#C0392B;">
+            <div class="stat-num" style="color:#C0392B;">700+<span class="stat-unit">賞</span></div>
+            <div class="stat-label">開港以来の受賞数（2025年は28冠）</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ SECTION 3: PUBLIC TRANSPORT ══ -->
+<section id="s3" class="section-pad">
+  <div class="max-w">
+    <div class="fade">
+      <div class="chapter-label">Chapter 03</div>
+      <h2 class="chapter-title">公共交通機関の利便性を数字で見る</h2>
+      <p class="chapter-sub">Singapore's World-Class Public Transport by the Numbers</p>
+      <div class="chapter-line"></div>
+    </div>
+
+    <div class="grid2" style="margin-top:48px;">
+      <div>
+        <div class="fade">
+          <img src="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=900&q=80" alt="Singapore bus" style="width:100%;height:260px;object-fit:cover;margin-bottom:24px;">
+        </div>
+        <div class="fade">
+          <p class="body-text" style="margin-bottom:28px;">シンガポールのMRT・バスネットワークは、国土が東京23区程度（約733km²）という狭さを活かし、驚異的な密度で整備されている。</p>
+        </div>
+        <div class="row-item fade"><div class="row-icon">🚇</div><div><div class="row-title">MRT：6路線143駅・約242km</div><p class="small-text">1987年開業以来、着実に拡張。2024年の一日平均乗降者数は341万人と2019年比でコロナ前水準を上回り回復。運行時間は5:30〜翌1:00。</p></div></div>
+        <div class="row-item fade"><div class="row-icon">🚌</div><div><div class="row-title">バス：約360路線・5,000台超</div><p class="small-text">MRTが届かないエリアも徒歩5〜10分圏内をカバー。2024年の一日平均乗降者数384万人。9億ドルを8年間投入する改善プログラムが進行中。</p></div></div>
+        <div class="row-item fade"><div class="row-icon">💳</div><div><div class="row-title">EZ-Linkカード：全交通共通IC</div><p class="small-text">一枚のカードでMRT・バス・LRTを乗り継ぎ可能。Apple Pay/Google Payでもタッチ乗車対応。旅行者にはチャージ式プリペイドカードが便利。</p></div></div>
+        <div class="row-item fade"><div class="row-icon">⏱️</div><div><div class="row-title">定時運行率 99.38%（2025年）</div><p class="small-text">2025年のMRT定時運行率は99.38%（2024年比+0.03%）。故障間隔は160万train-km（政府目標100万の1.6倍）。世界最高水準の信頼性。</p></div></div>
+      </div>
+      <div>
+        <div class="grid2 fade" style="gap:20px;margin-bottom:24px;">
+          <div class="stat-card">
+            <div class="stat-num" style="color:#1a1a2e;">3.41<span class="stat-unit">M/日</span></div>
+            <div class="stat-label">2024年MRT一日乗降者数（2019年超え）</div>
+          </div>
+          <div class="stat-card d1" style="border-top-color:#2C7A7B;">
+            <div class="stat-num" style="color:#2C7A7B;">99.38<span class="stat-unit">%</span></div>
+            <div class="stat-label">2025年のMRT定時運行率</div>
+          </div>
+          <div class="stat-card d2" style="border-top-color:#C0392B;">
+            <div class="stat-num" style="color:#C0392B;">242.6<span class="stat-unit">km</span></div>
+            <div class="stat-label">現在のMRT総延長（6路線143駅）</div>
+          </div>
+          <div class="stat-card d3" style="border-top-color:#7D3C98;">
+            <div class="stat-num" style="color:#7D3C98;">10<span class="stat-unit">分</span></div>
+            <div class="stat-label">2030年代目標：全家庭の8割がMRT駅から徒歩圏</div>
+          </div>
+        </div>
+        <div class="info-box fade" style="border-left-color:#2C7A7B;">
+          <div class="info-box-title" style="color:#2C7A7B;">運賃体系と割引制度</div>
+          <p class="small-text"><strong>基本運賃：</strong>距離に応じた段階制。バスとMRTの乗り継ぎは割引あり。<br><br><strong>CEPAS統合割引：</strong>バス→MRT等の乗り継ぎで自動的に割引適用。<br><br><strong>Seniors/学生割引：</strong>65歳以上・学生は大幅割引。シンガポール市民・PRは追加の割引カードあり。<br><br><strong>月上限キャップ：</strong>一定金額を超えると自動的に割引が適用される月間上限制度あり。</p>
+        </div>
+        <div class="info-box fade" style="border-left-color:#1a7f37;">
+          <div class="info-box-title" style="color:#1a7f37;">Grab（配車アプリ）の普及</div>
+          <p class="small-text">東南アジア版Uberとも言えるGrabは、シンガポールで最も使われる配車サービス。2024年の一日平均利用数43.1万件（2019年比増）。MRTとの組み合わせで「ラストワンマイル問題」を解消している。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ SECTION 4: CAR OWNERSHIP ══ -->
+<section id="s4" class="section-alt">
+  <div class="max-w">
+    <div class="fade">
+      <div class="chapter-label">Chapter 04</div>
+      <h2 class="chapter-title">車を持つメリットと所有のための条件</h2>
+      <p class="chapter-sub">Car Ownership in Singapore: Worth It?</p>
+      <div class="chapter-line"></div>
+    </div>
+
+    <div style="margin-top:48px;">
+      <div class="fade">
+        <p class="body-text" style="margin-bottom:32px;">シンガポールの車は「世界で最も高い」と言われる。政府の意図的な価格政策と、限られた道路容量を守るための規制の結果だ。しかしそれでも車を所有することで得られる利便性は、多くの住民にとって魅力的だ。</p>
+      </div>
+
+      <div class="grid2">
+        <div>
+          <div class="fade">
+            <img src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=900&q=80" alt="Car Singapore" style="width:100%;height:240px;object-fit:cover;margin-bottom:24px;">
+          </div>
+          <div class="info-box fade">
+            <div class="info-box-title">COE（車両資格証明書）制度とは？</div>
+            <p class="small-text">COE（Certificate of Entitlement）は、シンガポールで車を所有・登録・使用するための10年間の許可証。<strong>毎月2回のオークション制（入札式）</strong>で決定される。需要と供給によって価格が変動し、現在はCat A（1.6L以下）で約S$10万前後、Cat B（1.6L超）で約S$12万前後。COEそのものが車体価格を大幅に上回ることも珍しくない。</p>
+          </div>
+          <div class="info-box fade" style="border-left-color:#C0392B;">
+            <div class="info-box-title" style="color:#C0392B;">車の総費用の内訳（新車・中型セダンの場合）</div>
+            <div class="grid-car-cost">
+              <div class="cost-row"><span>COE（Cat A）</span><span style="font-weight:700;color:#C0392B;">〜S$10万（入札次第）</span></div>
+              <div class="cost-row"><span>車体本体価格（OMV込）</span><span style="font-weight:700;color:#666;">S$2〜4万</span></div>
+              <div class="cost-row"><span>ARF（追加登録税）</span><span style="font-weight:700;color:#666;">OMVの100〜220%以上</span></div>
+              <div class="cost-row"><span>GST（消費税9%）</span><span style="font-weight:700;color:#666;">車体価格に課税</span></div>
+              <div class="cost-row"><span>初年度合計（目安）</span><span style="font-weight:700;color:#1a1a2e;">S$14〜18万〜</span></div>
+              <p class="cost-note">※10年間の総所有コストはS$20〜25万が一般的な試算</p>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="info-box fade" style="border-left-color:#1a7f37;">
+            <div class="info-box-title" style="color:#1a7f37;">車を持つメリット</div>
+            <div class="row-item" style="border-bottom:1px solid #eee;"><div class="row-icon">🌙</div><div><div class="row-title">深夜・早朝の自由な移動</div><p class="small-text">MRTの終電後（深夜1時〜5時半）もどこへでも移動可能。特に深夜シフトの仕事、早朝の空港送迎などで絶大な価値を発揮。</p></div></div>
+            <div class="row-item" style="border-bottom:1px solid #eee;"><div class="row-icon">👨‍👩‍👧</div><div><div class="row-title">ファミリーの利便性</div><p class="small-text">子供の送り迎え、週末の郊外へのお出かけ、大量の買い物など、家族がいる場合の移動の自由度は格段に上がる。</p></div></div>
+            <div class="row-item" style="border-bottom:1px solid #eee;"><div class="row-icon">🇲🇾</div><div><div class="row-title">マレーシアへの陸路移動</div><p class="small-text">JB（ジョホールバル）への買い物・週末旅行が自由自在に。食料品・ガソリン代などでシンガポール生活コストを削減できる。</p></div></div>
+            <div class="row-item"><div class="row-icon">💼</div><div><div class="row-title">ビジネス上の優位性</div><p class="small-text">クライアント訪問・商談・深夜や週末のミーティングなど、ビジネス上の柔軟性が向上。車での移動がステータスになることも。</p></div></div>
+          </div>
+
+          <div class="info-box fade" style="border-left-color:#7D3C98;">
+            <div class="info-box-title" style="color:#7D3C98;">賢い所有方法</div>
+            <div class="inset-row">
+              <div class="inset-item" style="border-left-color:#7D3C98;"><div class="inset-title">オフピーク車（OPC）の活用</div><p class="small-text">平日7:00〜19:00はCBDなど混雑エリアへの乗り入れ制限あり。その代わりCOEが安く（Cat E扱い）、同じ車種でも数万S$安くなる。週末メインの使用なら非常にコスパが良い。</p></div>
+              <div class="inset-item" style="border-left-color:#7D3C98;"><div class="inset-title">中古車（5〜7年落ち）購入</div><p class="small-text">COE残存期間を確認した上で購入。残存長い中古を狙う戦略もある。維持費と相談しながら判断を。</p></div>
+              <div class="inset-item" style="border-left-color:#7D3C98;"><div class="inset-title">EV（電気自動車）の選択</div><p class="small-text">政府のVES（排出量規制）で最大S$2.5万の補助金（2025年時点）。EEAIでARFを最大45%削減も。ガソリン代不要でランニングコスト大幅削減。</p></div>
+              <div class="inset-item" style="border-left-color:#7D3C98;"><div class="inset-title">COE入札のタイミング</div><p class="small-text">COEは月2回入札。LTAが2025年〜2万枚の追加放出を進めており、価格が落ち着く可能性も。直近の結果や供給量を確認し、価格が下がるタイミングを狙う。</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ERP dark block -->
+      <div class="dark-block fade" style="margin-top:32px;">
+        <div class="dark-block-eyebrow">ERP 2.0 システム</div>
+        <div class="dark-block-title">世界最先端の渋滞課金「ERP 2.0」</div>
+        <div class="erp-grid">
+          <div><div class="erp-item-title">仕組み</div><div class="erp-item-text">車載OBUデバイスが路上のゲートレスシステムと通信し、時間・場所・混雑度に応じてリアルタイムに課金。旧IUを刷新し2025年より本格稼働。</div></div>
+          <div><div class="erp-item-title">料金帯</div><div class="erp-item-text">混雑状況に応じて動的に変動。通常S$0.5〜4.0/通過。ピーク時のCBD入域は累積で一日数ドルになることも。ERP 2.0でより細かい課金が可能に。</div></div>
+          <div><div class="erp-item-title">目的と効果</div><div class="erp-item-text">道路容量の最適化と渋滞緩和が目的。高い課金により車の利用を抑制し、公共交通への誘導効果を生む。1998年導入以来、渋滞時間を大幅に削減した実績。</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ SECTION 5: FUTURE ══ -->
+<section id="s5" class="section-pad">
+  <div class="max-w">
+    <div class="fade">
+      <div class="chapter-label">Chapter 05</div>
+      <h2 class="chapter-title">将来を見据えた交通・空港拡張計画</h2>
+      <p class="chapter-sub">Singapore's Ambitious Transport Future: 2030–2040 and Beyond</p>
+      <div class="chapter-line"></div>
+    </div>
+
+    <div style="margin-top:48px;">
+      <div class="fade">
+        <p class="body-text" style="margin-bottom:32px;">シンガポールは「現在の成功」に満足しない。2040年に向け、MRT路線倍増・新規路線・空港ターミナル5建設など、国家規模のインフラ投資が進んでいる。その規模と緻密さは世界の都市計画のモデルになっている。</p>
+      </div>
+      <div class="fade">
+        <img src="https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=900&q=80" alt="Future Singapore" style="width:100%;height:280px;object-fit:cover;margin-bottom:40px;">
+      </div>
+
+      <div class="grid-future">
+        <div class="future-card fade" style="border-top-color:#C0392B;">
+          <div class="future-card-phase" style="color:#C0392B;">🔴 Phase 1: 2030 / Phase 2: 2032 / Phase 3: 2030年代後半</div>
+          <div class="future-card-title">クロスアイランドライン（CRL）</div>
+          <p class="small-text">シンガポール最長の全地下路線（全3フェーズで約70km・27駅）。チャンギからジュロンまで東西を横断し、既存のEWL・DTLの混雑を大幅に緩和。Phase 1はChangi〜Bright Hillの12駅（29km）を2030年開通予定。また2035年頃にはチャンギ空港T5への延伸も確定。</p>
+        </div>
+        <div class="future-card fade d1" style="border-top-color:#2980B9;">
+          <div class="future-card-phase" style="color:#2980B9;">🔵 開通準備中・段階的開業</div>
+          <div class="future-card-title">ジュロン・リージョン・ライン（JRL）</div>
+          <p class="small-text">ジュロン工業地帯を中心に西部を結ぶ新路線（27駅）。Choa Chu KangからJurong Pierまでを南北に縦断。2030年代後半には西海岸まで延伸予定で、NTU（南洋理工大学）エリアも接続する計画が進行中。</p>
+        </div>
+        <div class="future-card fade" style="border-top-color:#27AE60;">
+          <div class="future-card-phase" style="color:#27AE60;">🟢 Stage 5: 2025年内 / T5延伸: 2030年代</div>
+          <div class="future-card-title">Thomson–East Coast Line（TEL）延伸</div>
+          <p class="small-text">現在のTELをさらに東海岸・チャンギ方面へ延伸。2025年内にDTL3e・TEL5の新駅が開業予定。最終的にはチャンギ空港T5まで直結し、CRLとも接続するシンガポール最大のハブ駅が生まれる。</p>
+        </div>
+        <div class="future-card fade d1" style="border-top-color:#8E44AD;">
+          <div class="future-card-phase" style="color:#8E44AD;">🟣 CCL6: 2025年内 / その他 2030年代〜</div>
+          <div class="future-card-title">CCL6・Seletar Line・Tengah Line（構想）</div>
+          <p class="small-text">CCL（サークルライン）の6段目は3駅を追加しループを完成させ2025年内開通予定。新たにSeletar LineとTengah Lineの工学調査を2026年から開始。将来的には南北東西を網羅するネットワークが完成する。</p>
+        </div>
+      </div>
+
+      <!-- T5 dark block -->
+      <div class="dark-block fade">
+        <div class="dark-block-eyebrow">Changi Airport — The Future</div>
+        <div class="dark-block-title">ターミナル5（T5）建設計画<br><span class="dark-block-sub">Groundbreaking: May 2025 / Expected completion: Mid-2030s</span></div>
+        <div class="dark-grid">
+          <div class="dark-stat"><div class="dark-stat-num">5,000万人/年</div><div class="dark-stat-label">T5単体の旅客処理能力</div></div>
+          <div class="dark-stat"><div class="dark-stat-num">55%増</div><div class="dark-stat-label">現在の年間9,000万人から1億4,000万人へ</div></div>
+          <div class="dark-stat"><div class="dark-stat-num">200都市超</div><div class="dark-stat-label">T5完成後の目標都市ネットワーク数</div></div>
+          <div class="dark-stat"><div class="dark-stat-num">CRL＋TEL</div><div class="dark-stat-label">T5に乗り入れる2つのMRT路線</div></div>
+        </div>
+        <p class="dark-text">2025年5月14日、ローレンス・ウォン首相が起工式を執り行ったT5は、現在の4ターミナルの合計に匹敵する規模の新ターミナル。埋め立て地に建設され、MRT2路線の直結アクセスを確保。単なる空港拡張ではなく、シンガポールをアジア最大の航空ハブとして確立するための国家戦略プロジェクト。</p>
+      </div>
+
+      <div class="grid3 fade" style="margin-top:0;">
+        <div class="stat-card">
+          <div class="stat-num" style="color:#1a1a2e;">360<span class="stat-unit">km</span></div>
+          <div class="stat-label">2040年のMRT目標総延長（現在の約1.5倍）</div>
+        </div>
+        <div class="stat-card d1" style="border-top-color:#2C7A7B;">
+          <div class="stat-num" style="color:#2C7A7B;">80<span class="stat-unit">%</span></div>
+          <div class="stat-label">2030年代に達成する「全家庭の徒歩10分以内」目標</div>
+        </div>
+        <div class="stat-card d2" style="border-top-color:#C0392B;">
+          <div class="stat-num" style="color:#C0392B;">140<span class="stat-unit">M人/年</span></div>
+          <div class="stat-label">T5完成後のチャンギ空港の旅客処理能力目標</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ SECTION 6: SUMMARY ══ -->
+<section id="s6" class="section-alt">
+  <div class="max-w">
+    <div class="fade">
+      <div class="chapter-label">Chapter 06</div>
+      <h2 class="chapter-title">シンガポールの交通から学べること</h2>
+      <p class="chapter-sub">Key Lessons from Singapore's Transport Success Story</p>
+      <div class="chapter-line"></div>
+    </div>
+
+    <div class="fade" style="margin-top:48px;">
+      <img src="https://images.unsplash.com/photo-1508780709619-79562169bc64?w=900&q=80" alt="Singapore city" style="width:100%;height:280px;object-fit:cover;margin-bottom:40px;">
+    </div>
+
+    <div class="grid2">
+      <div>
+        <div class="learn-item fade">
+          <div class="learn-num">01</div>
+          <div><div class="learn-title">長期ビジョンへの投資を惜しまない</div><p class="small-text">シンガポール政府は常に「10〜20年後」を見越したインフラ計画を策定し、実行する。短期的な費用対効果だけでなく、都市の持続可能性への信念が投資を継続させる。</p></div>
+        </div>
+        <div class="learn-item fade">
+          <div class="learn-num">02</div>
+          <div><div class="learn-title">インセンティブとディスインセンティブの両立</div><p class="small-text">公共交通を便利にするだけでなく、COE・ERP・ARFなどで自動車の「使いにくさ」も設計する。使う行動を誘導するだけでなく、使わない行動も誘導する二重戦略。</p></div>
+        </div>
+        <div class="learn-item fade">
+          <div class="learn-num">03</div>
+          <div><div class="learn-title">「世界No.1」でも改善を止めない文化</div><p class="small-text">チャンギ空港はSkytrax 13回受賞後も、T5建設・テクノロジー投資・サービス向上を止めない。現状維持ではなく「現在地からの飛躍」を常に追求する組織文化。</p></div>
+        </div>
+      </div>
+      <div>
+        <div class="learn-item fade d1">
+          <div class="learn-num">04</div>
+          <div><div class="learn-title">民間の競争と政府監督の絶妙なバランス</div><p class="small-text">LTAが制度設計・標準設定・投資判断を行い、実際の運行はSMRT・SBSという民間企業が担う。公共性と効率性を両立する官民連携モデルが機能している。</p></div>
+        </div>
+        <div class="learn-item fade d1">
+          <div class="learn-num">05</div>
+          <div><div class="learn-title">データに基づいた継続的な最適化</div><p class="small-text">ERP料金の動的調整、MRTの故障率管理、バス路線の増減は全て需要データに基づく。「感覚」ではなく「証拠」で意思決定する行政スタイルが精度を高める。</p></div>
+        </div>
+        <div class="learn-item fade d1">
+          <div class="learn-num">06</div>
+          <div><div class="learn-title">住む人・来る人の両方を意識した設計</div><p class="small-text">チャンギ空港がJewelを作り、MRTに無料Wi-Fiを提供し、乗継旅行者に無料市内観光ツアーを提供するのは、「通過点」ではなく「目的地」を目指す姿勢の表れ。</p></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="quote-wrap fade">
+      <blockquote>「シンガポールの交通政策は、物理的インフラではなく、<br>都市に住む人々の行動を設計するものだ。」</blockquote>
+      <div class="quote-attr">— シンガポールの交通哲学</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ FOOTER ══ -->
+<footer id="site-footer">
+  <div class="footer-inner">
+    <div class="footer-title">シンガポール交通・空港ガイド</div>
+    <div class="footer-sub">Singapore Transport &amp; Airport — Comprehensive Guide</div>
+    <div class="footer-nav">
+      <button class="footer-btn" onclick="goTo('s1')">交通の歴史</button>
+      <button class="footer-btn" onclick="goTo('s2')">チャンギ空港</button>
+      <button class="footer-btn" onclick="goTo('s3')">公共交通</button>
+      <button class="footer-btn" onclick="goTo('s4')">車の所有</button>
+      <button class="footer-btn" onclick="goTo('s5')">将来の展望</button>
+      <button class="footer-btn" onclick="goTo('s6')">まとめ</button>
+    </div>
+    <p class="footer-note">本ページの情報はLTA・CAG・Wikipedia等の公開情報をもとに作成しています。数値・計画は変更される場合があります。最新情報は各公式サイトにてご確認ください。Images: Unsplash (CC0 License)</p>
+  </div>
+</footer>
+
+<script>
+/* ── Scroll to section ── */
+function goTo(id) {
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+  document.getElementById('mobile-menu').classList.remove('open');
 }
+
+/* ── Mobile menu toggle ── */
+function toggleMenu() {
+  document.getElementById('mobile-menu').classList.toggle('open');
+}
+
+/* ── Active nav on scroll ── */
+const sections = ['s1','s2','s3','s4','s5','s6'];
+const navBtns  = document.querySelectorAll('.nav-btn');
+const mNavItems = document.querySelectorAll('.mobile-nav-item');
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const id = e.target.id;
+      navBtns.forEach((btn, i) => {
+        btn.classList.toggle('active', sections[i] === id);
+      });
+      mNavItems.forEach((item, i) => {
+        item.classList.toggle('active', sections[i] === id);
+      });
+    }
+  });
+}, { threshold: 0.2 });
+
+sections.forEach(id => {
+  const el = document.getElementById(id);
+  if (el) observer.observe(el);
+});
+
+/* ── Fade-in on scroll ── */
+const fadeEls = document.querySelectorAll('.fade');
+const fadeObserver = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.12 });
+
+fadeEls.forEach(el => fadeObserver.observe(el));
+
+/* ── Close mobile menu on outside click ── */
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('mobile-menu');
+  const ham = document.getElementById('hamburger');
+  if (!menu.contains(e.target) && !ham.contains(e.target)) {
+    menu.classList.remove('open');
+  }
+});
+</script>
+
+</body>
+</html>
